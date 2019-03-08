@@ -1,0 +1,406 @@
+{
+  "openapi" : "3.0.0",
+  "info" : {
+    "title" : "Logs REST API",
+    "description" : "Logs rest api.  for master thesis",
+    "contact" : {
+      "email" : "joaquim.abreu@ams.com"
+    },
+    "version" : "1.0.0"
+  },
+  "servers" : [ {
+    "url" : "http://10.63.20.29:8080/api"
+  } ],
+  "tags" : [ {
+    "name" : "REST",
+    "description" : "Operations through the REST API endpoints"
+  }, {
+    "name" : "GraphQL",
+    "description" : "Operations through the graphql endpoint"
+  } ],
+  "paths" : {
+    "/graphql" : {
+      "post" : {
+        "tags" : [ "GraphQL" ],
+        "summary" : "Use the graphql endpoint to query the database",
+        "description" : "go to the /graphql endpoint to see in dept documentation",
+        "operationId" : "findLogsGraphql",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/body"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "ok",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "example" : {
+                    "data" : {
+                      "logsearch" : [ {
+                        "source_function" : "TEST_REPLICATION.SET_STATE_END_TS",
+                        "source_system" : "ORACLE",
+                        "log_guid" : "26575765",
+                        "log_level" : "ERROR",
+                        "application_code" : "LDS",
+                        "application_context" : "",
+                        "created_at" : "2019-02-04T15:19:03",
+                        "log_message" : "Start: Set state_end_ts_utc to [24.01.18 10:47:26,396404]",
+                        "call_stack" : "",
+                        "created_by" : "TEST_OWNER"
+                      } ]
+                    }
+                  },
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/GraphQLData"
+                  }, {
+                    "$ref" : "#/components/schemas/GraphQLErrors"
+                  } ]
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "bad request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_400"
+                }
+              }
+            }
+          }
+        },
+        "servers" : [ {
+          "url" : "http://10.63.20.29:8080"
+        } ]
+      }
+    },
+    "/logs" : {
+      "post" : {
+        "tags" : [ "REST" ],
+        "summary" : "Adds logs",
+        "description" : "entries are validated and redirected to logstash to be sent to the DBs",
+        "operationId" : "addLogs",
+        "requestBody" : {
+          "description" : "The logs to insert",
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/Log"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "ok"
+          }
+        }
+      }
+    },
+    "/logs/{source_system}/{app_code}" : {
+      "get" : {
+        "tags" : [ "REST" ],
+        "summary" : "Finds logs by source_system and app_code",
+        "description" : "gets logs from elasticsearch",
+        "operationId" : "findLogsByParams",
+        "parameters" : [ {
+          "name" : "source_system",
+          "in" : "path",
+          "description" : "source_system to match",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "app_code",
+          "in" : "path",
+          "description" : "app_code to match",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "log_level",
+          "in" : "query",
+          "description" : "optional log_level to match",
+          "required" : false,
+          "style" : "form",
+          "explode" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "created_at_gte",
+          "in" : "query",
+          "description" : "created at greater than or equal to. date format= YYYY-MM-DD",
+          "required" : false,
+          "style" : "form",
+          "explode" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "created_at_lte",
+          "in" : "query",
+          "description" : "created at less than or equal to. date format= YYYY-MM-DD",
+          "required" : false,
+          "style" : "form",
+          "explode" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "log_guid",
+          "in" : "query",
+          "description" : "globally unique identifier",
+          "required" : false,
+          "style" : "form",
+          "explode" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "max number of logs in the response. defaults to 500 if not defined or not a number",
+          "required" : false,
+          "style" : "form",
+          "explode" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "ok",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_200"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_400_1"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No logs Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_404"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Log" : {
+        "type" : "object",
+        "properties" : {
+          "source_function" : {
+            "type" : "string",
+            "description" : "function where the log originated from",
+            "example" : "MZE_REPLICATION.MAIN"
+          },
+          "source_system" : {
+            "type" : "string",
+            "description" : "system can be oracle, sap, sharepoint,...",
+            "example" : "ORACLE"
+          },
+          "log_guid" : {
+            "type" : "string",
+            "description" : "globally unique identifier",
+            "example" : "69043178"
+          },
+          "log_level" : {
+            "type" : "string",
+            "description" : "INFO, ERROR, FATAL_ERROR, DEBUG, WARNING",
+            "example" : "DEBUG"
+          },
+          "application_code" : {
+            "type" : "string",
+            "description" : "application code (LDS,MZE,LDSI,...)"
+          },
+          "application_context" : {
+            "type" : "string",
+            "description" : "log attachments, ..."
+          },
+          "created_at" : {
+            "type" : "string",
+            "description" : "response format= \"yyyy-MM-dd'T'HH:mm:ss\" (example:2019-02-04T15:19:03) request body format= \"yyyy-MM-dd HH.mm.ss\" (example:2019-02-04 15.19.03)"
+          },
+          "log_message" : {
+            "type" : "string"
+          },
+          "call_stack" : {
+            "type" : "string",
+            "description" : "the stack trace"
+          },
+          "created_by" : {
+            "type" : "string"
+          }
+        }
+      },
+      "GraphQLData" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/GraphQLData_data"
+          }
+        }
+      },
+      "GraphQLErrors" : {
+        "type" : "object",
+        "properties" : {
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GraphQLErrors_errors"
+            }
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/GraphQLErrors_data"
+          }
+        }
+      },
+      "body" : {
+        "required" : [ "query" ],
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "string",
+            "example" : "{logsSearch(searchInput: {application_code: \"LDS\", log_level: \"ERROR\", source_system: \"ORACLE\",  created_at_gte: \"2018-03-06\", created_at_lte: \"2019-03-08\", log_guid: \"69043178\"}) { source_function,source_system,log_guid,log_level,application_code,application_context,created_at,log_message,call_stack,created_by }}"
+          }
+        }
+      },
+      "inline_response_400" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "type" : "string",
+            "description" : "stringified description of the error",
+            "example" : "type: entity.parse.failed"
+          }
+        }
+      },
+      "inline_response_200" : {
+        "type" : "object",
+        "properties" : {
+          "total hits" : {
+            "type" : "integer",
+            "example" : 1
+          },
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Log"
+            }
+          }
+        }
+      },
+      "inline_response_400_1" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "type" : "string",
+            "description" : "stringified description of the error. In most cases this means that there is a syntax error",
+            "example" : "type: entity.parse.failed"
+          }
+        }
+      },
+      "inline_response_404" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "type" : "string",
+            "description" : "No logs match the query and path parameters from the GET request",
+            "example" : "No logs found matching the Request parameters"
+          }
+        }
+      },
+      "GraphQLData_data" : {
+        "type" : "object",
+        "properties" : {
+          "logsSearch" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Log"
+            }
+          }
+        }
+      },
+      "GraphQLErrors_locations" : {
+        "type" : "object",
+        "properties" : {
+          "line" : {
+            "type" : "number",
+            "example" : 1
+          },
+          "column" : {
+            "type" : "number",
+            "example" : 2
+          }
+        }
+      },
+      "GraphQLErrors_errors" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string",
+            "example" : "Cannot query field \"logsSearcsh\" on type \"Query\". Did you mean \"logsSearch\"?"
+          },
+          "locations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GraphQLErrors_locations"
+            }
+          },
+          "path" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "example" : "logsSearch"
+            }
+          }
+        }
+      },
+      "GraphQLErrors_data" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/GraphQLData_data"
+          }
+        }
+      }
+    }
+  }
+}
