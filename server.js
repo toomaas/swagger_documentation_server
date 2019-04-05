@@ -15,4 +15,4 @@ var options = {
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
 
-app.listen(PORT, async () => console.log(`swagger documentation server listening on port ${PORT} at /docs`))
+app.listen(PORT, async () => console.log(`Swagger documentation server listening on port ${PORT} at /docs`))

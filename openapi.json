@@ -1,14 +1,16 @@
 {
   "openapi" : "3.0.0",
   "info" : {
-    "title" : "Logs REST API",
-    "description" : "Logs rest api.  for master thesis",
+    "title" : "Logs API",
+    "description" : "Logs api.  for master thesis",
     "contact" : {
       "email" : "joaquim.abreu@ams.com"
     },
     "version" : "1.0.0"
   },
   "servers" : [ {
+    "url" : "http://logjoaquim-log-node.apps.amsint.com/api"
+  }, {
     "url" : "http://10.63.20.29:8080/api"
   } ],
   "tags" : [ {
@@ -22,7 +24,7 @@
     "/graphql" : {
       "post" : {
         "tags" : [ "GraphQL" ],
-        "summary" : "Use the graphql endpoint to query the database",
+        "summary" : "Use graphql to query the database",
         "description" : "go to the /graphql endpoint to see in dept documentation",
         "operationId" : "findLogsGraphql",
         "requestBody" : {
@@ -36,7 +38,7 @@
         },
         "responses" : {
           "200" : {
-            "description" : "ok",
+            "description" : "OK. The request had acceptable graphql syntax and the server returned data from the elasticsearchDB",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -67,17 +69,30 @@
             }
           },
           "400" : {
-            "description" : "bad request",
+            "description" : "bad request. could be a graphql specific error or a syntax error",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/inline_response_400"
+                  "type" : "object",
+                  "example" : {
+                    "error" : {
+                      "name" : "entity.parse.failed",
+                      "details" : "Unexpected token y in JSON at position 0"
+                    }
+                  },
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/Node400Error"
+                  }, {
+                    "$ref" : "#/components/schemas/GraphQLErrors"
+                  } ]
                 }
               }
             }
           }
         },
         "servers" : [ {
+          "url" : "http://logjoaquim-log-node.apps.amsint.com"
+        }, {
           "url" : "http://10.63.20.29:8080"
         } ]
       }
@@ -104,7 +119,34 @@
         },
         "responses" : {
           "200" : {
-            "description" : "ok"
+            "description" : "ok",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_200"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "bad request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Node400Error"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "internal server error. can be caused by an internally failed connection to some resource (such as logstash)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_500"
+                }
+              }
+            }
           }
         }
       }
@@ -176,7 +218,17 @@
             "type" : "string"
           }
         }, {
-          "name" : "limit",
+          "name" : "from",
+          "in" : "query",
+          "description" : "offset from the first result you want to fetch. defaults to 0 if not defined or not a number",
+          "required" : false,
+          "style" : "form",
+          "explode" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "size",
           "in" : "query",
           "description" : "max number of logs in the response. defaults to 500 if not defined or not a number",
           "required" : false,
@@ -188,31 +240,27 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "ok",
+            "description" : "ok. Query and path parameters accepted and used to query the elasticsearchDB. The response is a json object",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/inline_response_200"
+                  "$ref" : "#/components/schemas/inline_response_200_1"
                 }
               }
             }
           },
           "400" : {
-            "description" : "Bad Request",
+            "description" : "bad request",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/inline_response_400_1"
-                }
-              }
-            }
-          },
-          "404" : {
-            "description" : "No logs Found",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/inline_response_404"
+                  "$ref" : "#/components/schemas/Node400Error"
+                },
+                "example" : {
+                  "error" : {
+                    "name" : "parse_exception",
+                    "details" : "failed to parse date field"
+                  }
                 }
               }
             }
@@ -229,12 +277,12 @@
           "source_function" : {
             "type" : "string",
             "description" : "function where the log originated from",
-            "example" : "MZE_REPLICATION.MAIN"
+            "example" : "EXAMPLE_SOURCE_FUNCTION.MAIN"
           },
           "source_system" : {
             "type" : "string",
-            "description" : "system can be oracle, sap, sharepoint,...",
-            "example" : "ORACLE"
+            "description" : "source_system can be one of ORACLE, SAP, SHAREPOINT,...",
+            "example" : "EXAMPLESYSTEM"
           },
           "log_guid" : {
             "type" : "string",
@@ -243,30 +291,43 @@
           },
           "log_level" : {
             "type" : "string",
-            "description" : "INFO, ERROR, FATAL_ERROR, DEBUG, WARNING",
-            "example" : "DEBUG"
+            "description" : "one of INFO, ERROR, FATAL_ERROR, DEBUG, WARNING",
+            "example" : "ERROR"
           },
           "application_code" : {
             "type" : "string",
-            "description" : "application code (LDS,MZE,LDSI,...)"
+            "description" : "application code (LDS,MZE,LDSI,...)",
+            "example" : "EXAMPLEAPP"
           },
           "application_context" : {
             "type" : "string",
-            "description" : "log attachments, ..."
+            "description" : "log attachments, ...",
+            "example" : "EXAMPLE APP CONTEXT"
           },
           "created_at" : {
             "type" : "string",
-            "description" : "response format= \"yyyy-MM-dd'T'HH:mm:ss\" (example:2019-02-04T15:19:03) request body format= \"yyyy-MM-dd HH.mm.ss\" (example:2019-02-04 15.19.03)"
+            "description" : "response format= \"yyyy-MM-dd'T'HH:mm:ss\" (example:2019-02-04T15:19:03) request body format= \"yyyy-MM-dd HH.mm.ss\" (example:2019-02-04 15:19:03)",
+            "example" : "2019-02-04 15:19:03"
           },
           "log_message" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "log description"
           },
           "call_stack" : {
             "type" : "string",
             "description" : "the stack trace"
           },
           "created_by" : {
-            "type" : "string"
+            "type" : "string",
+            "example" : "OWNER"
+          }
+        }
+      },
+      "Node400Error" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "$ref" : "#/components/schemas/Node400Error_error"
           }
         }
       },
@@ -298,21 +359,43 @@
         "properties" : {
           "query" : {
             "type" : "string",
-            "example" : "{logsSearch(searchInput: {application_code: \"LDS\", log_level: \"ERROR\", source_system: \"ORACLE\",  created_at_gte: \"2018-03-06\", created_at_lte: \"2019-03-08\", log_guid: \"69043178\"}) { source_function,source_system,log_guid,log_level,application_code,application_context,created_at,log_message,call_stack,created_by }}"
-          }
-        }
-      },
-      "inline_response_400" : {
-        "type" : "object",
-        "properties" : {
-          "error" : {
-            "type" : "string",
-            "description" : "stringified description of the error",
-            "example" : "type: entity.parse.failed"
+            "example" : "{logsSearch(searchInput: {application_code: \"LDS\", log_level: \"ERROR\", source_system: \"ORACLE\",  created_at_gte: \"2018-03-06\", created_at_lte: \"2019-03-08\", log_guid: \"69043178\", from: 400, size: 200}) { source_function,source_system,log_guid,log_level,application_code,application_context,created_at,log_message,call_stack,created_by }}"
           }
         }
       },
       "inline_response_200" : {
+        "type" : "object",
+        "properties" : {
+          "result" : {
+            "type" : "string",
+            "example" : "ok"
+          }
+        }
+      },
+      "inline_response_500_error" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "type of error",
+            "example" : "Error with the logstash endpoint"
+          },
+          "details" : {
+            "type" : "string",
+            "description" : "description of the error",
+            "example" : "timeout of 5000ms exceeded"
+          }
+        }
+      },
+      "inline_response_500" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "$ref" : "#/components/schemas/inline_response_500_error"
+          }
+        }
+      },
+      "inline_response_200_1" : {
         "type" : "object",
         "properties" : {
           "total hits" : {
@@ -327,23 +410,18 @@
           }
         }
       },
-      "inline_response_400_1" : {
+      "Node400Error_error" : {
         "type" : "object",
         "properties" : {
-          "error" : {
+          "name" : {
             "type" : "string",
-            "description" : "stringified description of the error. In most cases this means that there is a syntax error",
-            "example" : "type: entity.parse.failed"
-          }
-        }
-      },
-      "inline_response_404" : {
-        "type" : "object",
-        "properties" : {
-          "error" : {
+            "description" : "type of error",
+            "example" : "ValidationError"
+          },
+          "details" : {
             "type" : "string",
-            "description" : "No logs match the query and path parameters from the GET request",
-            "example" : "No logs found matching the Request parameters"
+            "description" : "description of the error",
+            "example" : "\"source_system\" with value \"ORA_CLE\" fails to match the required pattern: /^[a-zA-Z]*$/"
           }
         }
       },
